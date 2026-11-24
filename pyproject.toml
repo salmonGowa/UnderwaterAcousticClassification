@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "underwater-acoustic-classification"
+version = "0.1.0"
+description = "Vessel-type and vessel-vs-ambient classification on public hydrophone recordings, with leakage-controlled evaluation."
+requires-python = ">=3.10"
+dependencies = [
+    "numpy==2.0.2",
+    "scipy==1.14.1",
+    "scikit-learn==1.6.1",
+    "pandas==2.2.2",
+    "librosa==0.10.2.post1",
+    "soundfile==0.12.1",
+    "PyYAML==6.0.2",
+    "matplotlib==3.9.2",
+]
+
+[project.optional-dependencies]
+# On Colab we keep the preinstalled torch (reinstalling it is slow and can break CUDA);
+# its version is written into every results/*/metrics.json. Locally: pip install -e ".[torch,dev]".
+torch = ["torch==2.5.1"]
+dev = ["pytest==8.3.3"]
+
+[tool.setuptools.packages.find]
+include = ["src*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
