@@ -1,0 +1,14 @@
+data/raw/
+data/cache/
+data/downloads/
+data/manifests/
+data/synthetic/
+results/smoke/
+__pycache__/
+*.pyc
+.pytest_cache/
+*.egg-info/
+.venv/
+
+# local virtualenv
+env/
