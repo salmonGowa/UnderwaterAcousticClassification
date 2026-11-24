@@ -1,0 +1,88 @@
+# Full study. Requires the full ShipsEar and DeepShip data (see data/README.md).
+# Every number in the README comes from results/main/summary.md produced by this config.
+name: main
+data_root: data            # overridden by the UAC_DATA_ROOT environment variable (Colab: Drive folder)
+seeds: [0, 1, 2]           # model seeds; deterministic models (majority, logreg) use only the first
+split_seed: 0              # fixes the hold-out set and CV folds for every model and seed
+
+features:
+  sample_rate: 16000
+  segment_s: 4.0
+  segment_hop_s: 2.0       # 50% overlap
+  n_mels: 64
+  win_ms: 25.0
+  hop_ms: 10.0
+  n_fft: 512               # 400-sample window zero-padded to 512 (see DECISIONS.md)
+  fmin: 0.0
+  n_mfcc: 20
+
+evaluation:
+  test_fraction: 0.2       # grouped hold-out, evaluated once
+  n_folds: 5               # grouped, stratified CV on the remaining 80%
+  n_bootstrap: 1000
+
+cnn:
+  lr: 0.001
+  weight_decay: 0.0001
+  batch_size: 64
+  max_epochs: 15
+  patience: 4
+  validation_fraction: 0.2 # grouped split inside the training data, for early stopping only
+
+baseline_params:
+  logreg: {C: 1.0}
+  random_forest: {n_estimators: 300, min_samples_leaf: 2}
+
+datasets:
+  deepship: {source: deepship}
+  shipsear: {source: shipsear}
+
+experiments:
+  - name: deepship_4class
+    type: within
+    dataset: deepship
+    classes: [Cargo, Passengership, Tanker, Tug]
+    label_map: {Cargo: Cargo, Passengership: Passengership, Tanker: Tanker, Tug: Tug}
+    models: [majority, logreg, random_forest, cnn]
+    noise:
+      pool_dataset: shipsear                 # real ambient from a different site; never used for training here
+      pool_labels: [Natural ambient noise]
+      snr_db: [20, 10, 5, 0, -5]
+      seed: 0
+
+  - name: shipsear_vessel_vs_ambient
+    type: within
+    dataset: shipsear
+    classes: [vessel, ambient]
+    label_map:
+      Passengers: vessel
+      RORO: vessel
+      Ocean liner: vessel
+      Motorboat: vessel
+      Mussel boat: vessel
+      Sailboat: vessel
+      Fishboat: vessel
+      Dredger: vessel
+      Tugboat: vessel
+      Trawler: vessel
+      Pilot ship: vessel
+      Natural ambient noise: ambient
+    models: [majority, logreg, random_forest, cnn]
+
+  - name: cross_deepship_to_shipsear
+    type: cross
+    source: deepship
+    target: shipsear
+    classes: [passenger, cargo]
+    source_label_map: {Passengership: passenger, Cargo: cargo}
+    target_label_map: {Passengers: passenger, Ocean liner: passenger, RORO: cargo}
+    models: [majority, logreg, random_forest, cnn]
+
+  - name: cross_shipsear_to_deepship
+    type: cross
+    source: shipsear
+    target: deepship
+    classes: [passenger, cargo]
+    source_label_map: {Passengers: passenger, Ocean liner: passenger, RORO: cargo}
+    target_label_map: {Passengership: passenger, Cargo: cargo}
+    models: [majority, logreg, random_forest, cnn]

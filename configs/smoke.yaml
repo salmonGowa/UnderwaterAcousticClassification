@@ -1,0 +1,59 @@
+# Synthetic end-to-end check of the whole pipeline. Runs on a CPU in a few minutes. Never reported.
+name: smoke
+data_root: data/synthetic           # overridden by the UAC_DATA_ROOT environment variable (Colab: Drive folder)
+seeds: [0, 1]              # model seeds; deterministic models (majority, logreg) use only the first
+split_seed: 0              # fixes the hold-out set and CV folds for every model and seed
+
+features:
+  sample_rate: 16000
+  segment_s: 4.0
+  segment_hop_s: 2.0       # 50% overlap
+  n_mels: 64
+  win_ms: 25.0
+  hop_ms: 10.0
+  n_fft: 512               # 400-sample window zero-padded to 512 (see DECISIONS.md)
+  fmin: 0.0
+  n_mfcc: 20
+
+evaluation:
+  test_fraction: 0.2       # grouped hold-out, evaluated once
+  n_folds: 3               # grouped, stratified CV on the remaining 80%
+  n_bootstrap: 200
+
+cnn:
+  lr: 0.001
+  weight_decay: 0.0001
+  batch_size: 64
+  max_epochs: 3
+  patience: 4
+  validation_fraction: 0.2 # grouped split inside the training data, for early stopping only
+
+baseline_params:
+  logreg: {C: 1.0}
+  random_forest: {n_estimators: 50, min_samples_leaf: 2}
+
+datasets:
+  synth_a:   # stands in for DeepShip: 32 kHz
+    source: synthetic
+    params: {sample_rate: 32000, vessels_per_class: 6, recordings_per_vessel: 2, duration_s: 12, n_ambient: 0, gain: 1.0, seed: 1}
+  synth_b:   # stands in for ShipsEar: odd sample rate, different gain, has ambient
+    source: synthetic
+    params: {sample_rate: 52734, vessels_per_class: 3, recordings_per_vessel: 2, duration_s: 12, n_ambient: 6, gain: 0.3, seed: 2}
+
+experiments:
+  - name: smoke_within
+    type: within
+    dataset: synth_a
+    classes: [Cargo, Passengership, Tanker, Tug]
+    label_map: {Cargo: Cargo, Passengership: Passengership, Tanker: Tanker, Tug: Tug}
+    models: [majority, logreg, random_forest, cnn]
+    noise: {pool_dataset: synth_b, pool_labels: [Natural ambient noise], snr_db: [20, 10, 5, 0, -5], seed: 0}
+
+  - name: smoke_cross
+    type: cross
+    source: synth_a
+    target: synth_b
+    classes: [passenger, cargo]
+    source_label_map: {Passengership: passenger, Cargo: cargo}
+    target_label_map: {Passengership: passenger, Cargo: cargo}
+    models: [majority, logreg, random_forest, cnn]

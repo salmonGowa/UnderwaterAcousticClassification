@@ -1,0 +1,46 @@
+# Development run on the 63 DeepShip files that are public on GitHub (truncated to ~200 s).
+# For checking the pipeline on real audio only; NOT reported as results.
+name: deepship_github
+data_root: data            # overridden by the UAC_DATA_ROOT environment variable (Colab: Drive folder)
+seeds: [0, 1, 2]           # model seeds; deterministic models (majority, logreg) use only the first
+split_seed: 0              # fixes the hold-out set and CV folds for every model and seed
+
+features:
+  sample_rate: 16000
+  segment_s: 4.0
+  segment_hop_s: 2.0       # 50% overlap
+  n_mels: 64
+  win_ms: 25.0
+  hop_ms: 10.0
+  n_fft: 512               # 400-sample window zero-padded to 512 (see DECISIONS.md)
+  fmin: 0.0
+  n_mfcc: 20
+
+evaluation:
+  test_fraction: 0.2       # grouped hold-out, evaluated once
+  n_folds: 5               # grouped, stratified CV on the remaining 80%
+  n_bootstrap: 1000
+
+cnn:
+  lr: 0.001
+  weight_decay: 0.0001
+  batch_size: 64
+  max_epochs: 15
+  patience: 4
+  validation_fraction: 0.2 # grouped split inside the training data, for early stopping only
+
+baseline_params:
+  logreg: {C: 1.0}
+  random_forest: {n_estimators: 300, min_samples_leaf: 2}
+
+datasets:
+  deepship: {source: deepship}
+
+experiments:
+  # Tug is excluded: only 3 public files, too few for grouped 5-fold CV.
+  - name: deepship_github_3class
+    type: within
+    dataset: deepship
+    classes: [Cargo, Passengership, Tanker]
+    label_map: {Cargo: Cargo, Passengership: Passengership, Tanker: Tanker}
+    models: [majority, logreg, random_forest, cnn]
